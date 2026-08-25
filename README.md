@@ -20,7 +20,8 @@ system-wide installers, no registry changes outside `HKCU`.
 
 All of them dot-source [`Common.ps1`](Common.ps1) for shared helpers (console
 output, version comparison, GitHub release lookup, download/extract,
-running-process safety checks, and User `PATH`/env var management).
+running-process safety checks, pip `--target` dist-info handling, and User
+`PATH`/env var management).
 
 ## Usage
 
@@ -74,8 +75,25 @@ failed or a script was missing.
 - **Azure CLI has no official Windows zip**, so it's handled differently:
   a portable embeddable Python is bootstrapped into `Apps\Python` (only
   once, if missing), then `azure-cli` is installed via
-  `pip install --target` straight into `Apps\AzureCLI`, driven by an
-  `az.cmd` shim.
+  `pip install --target` straight into `Apps\AzureCLI`. Two quirks of that
+  layout are handled explicitly:
+  - **A generated `az_launcher.py` repairs `sys.path`.** `pip install
+    --target` drops the payload into `Apps\AzureCLI`, but nothing puts that
+    folder on `sys.path`: Python only adds the *script's* own directory
+    (`...\azure\cli`), and the embeddable runtime's `._pth` file forces
+    isolated mode, so `PYTHONPATH` is ignored too. The launcher prepends
+    the install dir — plus pywin32's `win32`, `win32\lib` and `pythonwin`
+    folders, and its `pywin32_system32` DLL directory, since the pywin32
+    post-install step never runs under `--target` — before handing off to
+    `azure.cli`. `az.cmd` invokes the bootstrapped `python.exe` by full
+    path and points it at the launcher.
+  - **Stale `*.dist-info` folders are pruned.** `pip install --upgrade
+    --target` overwrites the package payload but leaves the previous
+    version's `*.dist-info` next to the new one. Reading "the first
+    dist-info that matches" would report the old version forever, making
+    every run conclude an update was due, so the installed version is read
+    as the *highest* dist-info present (`Get-DistInfoVersion`) and the
+    leftovers are deleted afterwards (`Remove-StaleDistInfo`).
 - **Running-process safety.** Before overwriting an install directory, each
   script checks whether any process is currently running from it and skips
   the update (or force-closes it with `-Force`) rather than risk corrupting

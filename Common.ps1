@@ -46,6 +46,70 @@ function Test-UpdateNeeded {
 }
 
 # --------------------------------------------------------------------------
+# pip --target helpers
+#
+# `pip install --upgrade --target <dir>` overwrites the package payload but
+# leaves the PREVIOUS version's *.dist-info folder sitting next to the new
+# one. Reading "the first dist-info that matches" then reports the stale
+# version forever, so every run concludes an update is due and reinstalls.
+# Get-DistInfoVersion reads the real (highest) version; Remove-StaleDistInfo
+# clears the leftovers so the folder keeps exactly one version per package.
+# --------------------------------------------------------------------------
+function Get-DistInfoVersion {
+    <# Highest installed version of $PackageName under a pip --target dir, or '' if not installed. #>
+    param(
+        [Parameter(Mandatory)][string]$Dir,
+        [Parameter(Mandatory)][string]$PackageName
+    )
+    if (-not (Test-Path -LiteralPath $Dir)) { return '' }
+    # pip normalizes '-' to '_' in dist-info names, so accept either separator.
+    $namePattern = [regex]::Escape($PackageName) -replace '[-_]', '[-_]'
+    $pattern = '^' + $namePattern + '-(\d[^-]*)\.dist-info$'
+    $versions = @(
+        Get-ChildItem -LiteralPath $Dir -Directory -ErrorAction SilentlyContinue |
+            ForEach-Object {
+                $m = [regex]::Match($_.Name, $pattern)
+                if ($m.Success) { $m.Groups[1].Value }
+            }
+    )
+    if ($versions.Count -eq 0) { return '' }
+    return ($versions |
+        Sort-Object -Property { ConvertTo-ComparableVersion $_ }, { $_ } -Descending |
+        Select-Object -First 1)
+}
+
+function Remove-StaleDistInfo {
+    <#
+    Where a pip --target dir holds more than one *.dist-info for the same
+    package, deletes all but the newest. Returns the number removed.
+    #>
+    param([Parameter(Mandatory)][string]$Dir)
+    if (-not (Test-Path -LiteralPath $Dir)) { return 0 }
+    $parsed = Get-ChildItem -LiteralPath $Dir -Directory -Filter '*.dist-info' -ErrorAction SilentlyContinue |
+        ForEach-Object {
+            $m = [regex]::Match($_.Name, '^(.+)-(\d[^-]*)\.dist-info$')
+            if ($m.Success) {
+                [pscustomobject]@{
+                    Package = $m.Groups[1].Value
+                    Version = $m.Groups[2].Value
+                    Path    = $_.FullName
+                }
+            }
+        }
+    $removed = 0
+    foreach ($group in @($parsed | Group-Object Package | Where-Object { $_.Count -gt 1 })) {
+        $stale = @($group.Group |
+            Sort-Object -Property { ConvertTo-ComparableVersion $_.Version }, { $_.Version } -Descending |
+            Select-Object -Skip 1)
+        foreach ($item in $stale) {
+            Remove-Item -LiteralPath $item.Path -Recurse -Force -ErrorAction SilentlyContinue
+            $removed++
+        }
+    }
+    return $removed
+}
+
+# --------------------------------------------------------------------------
 # GitHub releases helpers
 # --------------------------------------------------------------------------
 function Invoke-GitHubApi {
