@@ -1,15 +1,20 @@
 <#
 .SYNOPSIS
-    Runs all seven Apps\* updater scripts in one go: AzCopy, AzureCLI,
-    GitHubCLI, NodeJS, Notepad++, PowerShell, VSCode.
+    Runs all nine Apps\* updater scripts in one go: AutoHotkey, AutoCorrectAHK,
+    AzCopy, AzureCLI, GitHubCLI, NodeJS, Notepad++, PowerShell, VSCode.
 
     Each app can also be updated independently by running its own
     Update-<App>.ps1 script directly - this is just a convenience wrapper
     that runs them all and prints a summary. One app failing doesn't stop
     the others from running.
 
+    Note that AutoCorrectAHK also ensures a per-user Startup shortcut for
+    AutoCorrect2 (run Update-AutoCorrectAHK.ps1 -NoStartupShortcut directly
+    if you'd rather it didn't), and that AutoCorrect2 is a background app you
+    normally leave running, so it usually needs -Force to update.
+
 .PARAMETER Only
-    Optional list of apps to run instead of all seven, e.g.
+    Optional list of apps to run instead of all nine, e.g.
     -Only NodeJS,VSCode
 
 .PARAMETER Force
@@ -25,7 +30,7 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('AzCopy', 'AzureCLI', 'GitHubCLI', 'NodeJS', 'NotepadPlusPlus', 'PowerShell', 'VSCode')]
+    [ValidateSet('AutoHotkey', 'AutoCorrectAHK', 'AzCopy', 'AzureCLI', 'GitHubCLI', 'NodeJS', 'NotepadPlusPlus', 'PowerShell', 'VSCode')]
     [string[]]$Only,
     [switch]$Force
 )
@@ -33,6 +38,11 @@ param(
 . "$PSScriptRoot\Common.ps1"
 
 $allApps = [ordered]@{
+    # AutoHotkey first: AutoCorrect2 ships its own renamed AutoHotkey.exe copies
+    # so it doesn't depend on the AHK install, but this is the order that reads
+    # sensibly in the summary table.
+    'AutoHotkey'       = 'Update-AutoHotkey.ps1'
+    'AutoCorrectAHK'   = 'Update-AutoCorrectAHK.ps1'
     'AzCopy'           = 'Update-AzCopy.ps1'
     'AzureCLI'         = 'Update-AzureCLI.ps1'
     'GitHubCLI'        = 'Update-GitHubCLI.ps1'
