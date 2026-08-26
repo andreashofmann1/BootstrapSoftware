@@ -262,6 +262,32 @@ function Remove-TempStagingDir {
 }
 
 # --------------------------------------------------------------------------
+# Service helpers
+# --------------------------------------------------------------------------
+function Stop-ServiceWhenReady {
+    <# Waits for a service to reach Running state (up to $TimeoutSeconds), then stops it. #>
+    param(
+        [Parameter(Mandatory)][string]$Name,
+        [int]$TimeoutSeconds = 30
+    )
+    $svc = Get-Service -Name $Name -ErrorAction SilentlyContinue
+    if (-not $svc) {
+        Write-Skip "Service '$Name' not found"
+        return
+    }
+    try {
+        if ($svc.Status -ne 'Running') {
+            Write-Info "Waiting for '$Name' to start (up to ${TimeoutSeconds}s)..."
+            $svc.WaitForStatus('Running', [TimeSpan]::FromSeconds($TimeoutSeconds))
+        }
+    } catch [System.ServiceProcess.TimeoutException] {
+        Write-Skip "Service '$Name' did not start within ${TimeoutSeconds}s, stopping anyway"
+    }
+    Stop-Service -Name $Name -Force -ErrorAction SilentlyContinue
+    Write-Ok "Stopped service '$Name'"
+}
+
+# --------------------------------------------------------------------------
 # Running-process safety
 # --------------------------------------------------------------------------
 function Get-ProcessesUsingPath {
