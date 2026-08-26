@@ -95,6 +95,38 @@ $results | Format-Table -AutoSize | Out-String | Write-Host
 $failures = $results | Where-Object { $_.Result -eq 'FAILED' -or $_.Result -eq 'Not found' }
 if ($failures) {
     Write-Host "$($failures.Count) app(s) had problems - see above." -ForegroundColor Red
+}
+
+# Ensure a logon scheduled task exists so updates run automatically.
+$taskName = 'Update-AllApps'
+$pwshExe  = (Get-Process -Id $PID).Path
+$scriptFullPath = $PSCommandPath
+$needsUpdate = $false
+
+$existing = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+if (-not $existing) {
+    $needsUpdate = $true
+} else {
+    $act = $existing.Actions | Select-Object -First 1
+    if ($act.Execute -ne $pwshExe -or $act.Arguments -ne "-NoProfile -File `"$scriptFullPath`"") {
+        $needsUpdate = $true
+    }
+}
+
+if ($needsUpdate) {
+    Write-Step "Registering '$taskName' scheduled task (runs at logon)"
+    $action    = New-ScheduledTaskAction -Execute $pwshExe -Argument "-NoProfile -File `"$scriptFullPath`""
+    $trigger   = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+    $settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+    $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive
+    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal `
+        -Description 'Run BootstrapSoftware updater at logon' -Force | Out-Null
+    Write-Ok "Scheduled task '$taskName' registered"
+} else {
+    Write-Info "Scheduled task '$taskName' already up to date"
+}
+
+if ($failures) {
     exit 1
 } else {
     Write-Host "All done." -ForegroundColor Green
