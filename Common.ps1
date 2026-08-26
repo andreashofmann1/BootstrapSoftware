@@ -194,6 +194,18 @@ function Get-EffectiveContentRoot {
     return $ExtractedDir
 }
 
+function Reset-LastExitCode {
+    <#
+    robocopy signals success with LOW non-zero exit codes (1 = files copied,
+    2 = extra files in destination, 3 = both), which is why the callers below
+    only treat >= 8 as failure. That code otherwise stays in $LASTEXITCODE and
+    becomes the exit code of the whole script, so `powershell -File
+    Update-VSCode.ps1` would report failure after a perfectly good update.
+    Clearing it keeps the scripts usable from scheduled tasks and CI.
+    #>
+    $global:LASTEXITCODE = 0
+}
+
 # --------------------------------------------------------------------------
 # Copy strategies
 #   - Copy-AppFiles: overwrite/add only, NEVER deletes anything already in
@@ -218,6 +230,7 @@ function Copy-AppFiles {
     if ($LASTEXITCODE -ge 8) {
         throw "robocopy failed copying '$SourceDir' -> '$DestDir' (exit code $LASTEXITCODE)"
     }
+    Reset-LastExitCode
 }
 
 function Copy-AppFilesMirror {
@@ -230,6 +243,7 @@ function Copy-AppFilesMirror {
     if ($LASTEXITCODE -ge 8) {
         throw "robocopy /MIR failed copying '$SourceDir' -> '$DestDir' (exit code $LASTEXITCODE)"
     }
+    Reset-LastExitCode
 }
 
 function Remove-TempStagingDir {

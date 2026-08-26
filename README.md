@@ -3,13 +3,15 @@
 A set of standalone PowerShell scripts that install and keep a handful of
 developer tools up to date **without admin rights**. Everything lives as a
 portable, xcopy-deployable install under `%USERPROFILE%\Apps\<AppName>`, and
-each app's folder is added to your *User* `PATH` — no elevation, no
-system-wide installers, no registry changes outside `HKCU`.
+each command-line app's folder is added to your *User* `PATH` — no elevation,
+no system-wide installers, no registry changes outside `HKCU`.
 
 ## Apps managed
 
 | Script | App | Source |
 |---|---|---|
+| [`Update-AutoHotkey.ps1`](Update-AutoHotkey.ps1) | AutoHotkey v2 | Latest GitHub release (`AutoHotkey/AutoHotkey`), official zip |
+| [`Update-AutoCorrectAHK.ps1`](Update-AutoCorrectAHK.ps1) | AutoCorrect2 (AHK v2 autocorrect suite) | Latest commit on `main` (`kunkel321/AutoCorrect2`) — no tagged releases |
 | [`Update-AzCopy.ps1`](Update-AzCopy.ps1) | AzCopy | Latest GitHub release (`Azure/azure-storage-azcopy`) |
 | [`Update-AzureCLI.ps1`](Update-AzureCLI.ps1) | Azure CLI | Latest PyPI `azure-cli`, installed into a bootstrapped portable Python |
 | [`Update-GitHubCLI.ps1`](Update-GitHubCLI.ps1) | GitHub CLI (`gh`) | Latest GitHub release (`cli/cli`) |
@@ -94,10 +96,35 @@ failed or a script was missing.
     every run conclude an update was due, so the installed version is read
     as the *highest* dist-info present (`Get-DistInfoVersion`) and the
     leftovers are deleted afterwards (`Remove-StaleDistInfo`).
+- **AutoHotkey ships no plain `AutoHotkey.exe`** in its zip — only
+  `AutoHotkey64.exe`/`AutoHotkey32.exe`, since the setup `.exe` builds the
+  launcher itself. `Update-AutoHotkey.ps1` keeps a copy matching your OS
+  bitness as `AutoHotkey.exe` so `AutoHotkey myscript.ahk` works from PATH.
+  It makes no registry changes, so `.ahk` files stay unassociated.
+- **AutoCorrect2 is versioned by commit**, not release tag: the installed
+  commit is recorded in `.autocorrect2-source.json` and compared on the next
+  run. It's also the one app whose *user data lives inside its install
+  folder*, so updates never overwrite your hotstring library
+  (`Core\AutoCorrectHotstrings.ahk`, what Win+H appends to), personal
+  hotstrings, `acSettings.ini`, API key or logs — while still refreshing
+  code, tools, word lists and docs. When upstream's library differs from
+  yours, the new one is saved beside it under the `NewTemporaryHotstrLib`
+  name from your `acSettings.ini`, which is where the suite's own
+  `UniqueStringExtractor` tool looks when merging the two. It gets a
+  per-user Startup shortcut instead of a `PATH` entry (it's a background
+  app, not a CLI), and needs no AutoHotkey install of its own — its bundled
+  `.exe` files are renamed copies of `AutoHotkey.exe`.
 - **Running-process safety.** Before overwriting an install directory, each
   script checks whether any process is currently running from it and skips
   the update (or force-closes it with `-Force`) rather than risk corrupting
   a locked binary.
+- **Exit codes are honest.** `robocopy` signals *success* with low non-zero
+  exit codes (1 = files copied, 2 = extra files in destination), which would
+  otherwise linger in `$LASTEXITCODE` and become the script's own exit code —
+  so `powershell -File Update-VSCode.ps1` reported failure after a perfectly
+  good update. The copy helpers clear it (`Reset-LastExitCode`) once they've
+  confirmed the code is below robocopy's real-failure threshold of 8, which
+  keeps these scripts usable from scheduled tasks and CI.
 
 ## Requirements
 
