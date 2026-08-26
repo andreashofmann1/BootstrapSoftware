@@ -127,6 +127,20 @@ if ($needsUpdate) {
     Write-Info "Scheduled task '$taskName' already up to date"
 }
 
+# Run machine-specific hook if present (not tracked by git).
+$localScript = Join-Path $PSScriptRoot 'Update-Local.ps1'
+if (Test-Path $localScript) {
+    Write-Host ""
+    Write-Host "==============================================" -ForegroundColor Magenta
+    Write-Host " Running machine-local hook" -ForegroundColor Magenta
+    Write-Host "==============================================" -ForegroundColor Magenta
+    try {
+        & $localScript -Force:$Force
+    } catch {
+        Write-Fail "Update-Local.ps1 failed: $($_.Exception.Message)"
+    }
+}
+
 if ($failures) {
     exit 1
 } else {
