@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
-    Runs all nine Apps\* updater scripts in one go: AutoHotkey, AutoCorrectAHK,
-    AzCopy, AzureCLI, GitHubCLI, NodeJS, Notepad++, PowerShell, VSCode.
+    Runs all ten Apps\* updater scripts in one go: AutoHotkey, AutoCorrectAHK,
+    AzCopy, AzureCLI, Git, GitHubCLI, NodeJS, Notepad++, PowerShell, VSCode.
 
     Each app can also be updated independently by running its own
     Update-<App>.ps1 script directly - this is just a convenience wrapper
@@ -30,7 +30,7 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('AutoHotkey', 'AutoCorrectAHK', 'AzCopy', 'AzureCLI', 'GitHubCLI', 'NodeJS', 'NotepadPlusPlus', 'PowerShell', 'VSCode')]
+    [ValidateSet('AutoHotkey', 'AutoCorrectAHK', 'AzCopy', 'AzureCLI', 'Git', 'GitHubCLI', 'NodeJS', 'NotepadPlusPlus', 'PowerShell', 'VSCode')]
     [string[]]$Only,
     [switch]$Force
 )
@@ -45,6 +45,7 @@ $allApps = [ordered]@{
     'AutoCorrectAHK'   = 'Update-AutoCorrectAHK.ps1'
     'AzCopy'           = 'Update-AzCopy.ps1'
     'AzureCLI'         = 'Update-AzureCLI.ps1'
+    'Git'              = 'Update-Git.ps1'
     'GitHubCLI'        = 'Update-GitHubCLI.ps1'
     'NodeJS'           = 'Update-NodeJS.ps1'
     'NotepadPlusPlus'  = 'Update-NotepadPlusPlus.ps1'
