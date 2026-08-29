@@ -127,6 +127,20 @@ if ($needsUpdate) {
     Write-Info "Scheduled task '$taskName' already up to date"
 }
 
+# Run shared custom commands (tracked by git, runs on all machines).
+$customScript = Join-Path $PSScriptRoot 'Custom-Commands.ps1'
+if (Test-Path $customScript) {
+    Write-Host ""
+    Write-Host "==============================================" -ForegroundColor Magenta
+    Write-Host " Running custom commands" -ForegroundColor Magenta
+    Write-Host "==============================================" -ForegroundColor Magenta
+    try {
+        & $customScript
+    } catch {
+        Write-Fail "Custom-Commands.ps1 failed: $($_.Exception.Message)"
+    }
+}
+
 # Run machine-specific hook if present (not tracked by git).
 $localScript = Join-Path $PSScriptRoot 'Update-Local.ps1'
 if (Test-Path $localScript) {
