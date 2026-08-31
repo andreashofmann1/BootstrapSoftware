@@ -18,6 +18,7 @@ no system-wide installers, no registry changes outside `HKCU`.
 | [`Update-NodeJS.ps1`](Update-NodeJS.ps1) | Node.js | `nodejs.org` dist index (Current or LTS channel) |
 | [`Update-NotepadPlusPlus.ps1`](Update-NotepadPlusPlus.ps1) | Notepad++ | Latest GitHub release (`notepad-plus-plus/notepad-plus-plus`), portable x64 build |
 | [`Update-PowerShell.ps1`](Update-PowerShell.ps1) | PowerShell 7 (`pwsh`) | Latest GitHub release (`PowerShell/PowerShell`) |
+| [`Update-Python.ps1`](Update-Python.ps1) | Python (full CPython, for development) | Latest GitHub release (`astral-sh/python-build-standalone`) |
 | [`Update-VSCode.ps1`](Update-VSCode.ps1) | VS Code | Official `win32-x64-archive` stable update feed |
 
 All of them dot-source [`Common.ps1`](Common.ps1) for shared helpers (console
@@ -96,6 +97,23 @@ failed or a script was missing.
     every run conclude an update was due, so the installed version is read
     as the *highest* dist-info present (`Get-DistInfoVersion`) and the
     leftovers are deleted afterwards (`Remove-StaleDistInfo`).
+- **There are deliberately two Pythons.** `Apps\Python` is the official
+  *embeddable* distribution, bootstrapped and owned by
+  `Update-AzureCLI.ps1` purely to host azure-cli. That distribution is meant
+  for shipping inside an application: its standard library is zipped, and it
+  has no `venv`, `ensurepip`, `tkinter`, `include\` or `libs\`, so it cannot
+  create virtual environments and cannot build any package without a
+  prebuilt wheel. `Update-Python.ps1` therefore installs a *separate*, full
+  CPython in `Apps\Python312` for actual development work, and leaves the
+  Azure CLI runtime alone. Since python.org publishes no full portable zip
+  for Windows - only the embeddable one and an `.exe` installer, which would
+  not be xcopy-deployable - the build comes from
+  `astral-sh/python-build-standalone`: ordinary relocatable CPython builds,
+  which is what keeps this non-admin. Both folders are on the User PATH, so
+  `Update-Python.ps1` calls `Add-UserPathEntry -Prepend` to put the full
+  Python *first* and win a bare `python` lookup. Azure CLI is unaffected -
+  its `az.cmd` invokes its own `python.exe` by full path.
+
 - **AutoHotkey ships no plain `AutoHotkey.exe`** in its zip — only
   `AutoHotkey64.exe`/`AutoHotkey32.exe`, since the setup `.exe` builds the
   launcher itself. `Update-AutoHotkey.ps1` keeps a copy matching your OS

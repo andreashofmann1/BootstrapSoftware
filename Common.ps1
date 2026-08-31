@@ -179,6 +179,33 @@ function Expand-ZipToDir {
     return $extractDir
 }
 
+function Expand-TarGzToDir {
+    <#
+    Downloads a .tar.gz from $Uri and extracts it into a fresh temp directory.
+    Returns that directory. Same contract as Expand-ZipToDir, for sources that
+    publish tarballs rather than zips (python-build-standalone).
+    #>
+    param([Parameter(Mandatory)][string]$Uri)
+    $staging = New-TempStagingDir
+    $tarPath = Join-Path $staging 'download.tar.gz'
+    Write-Info "Downloading $Uri"
+    Invoke-FileDownload -Uri $Uri -OutFile $tarPath
+    $extractDir = Join-Path $staging 'extracted'
+    New-Item -ItemType Directory -Force -Path $extractDir | Out-Null
+
+    # Call Windows' own bsdtar by full path rather than a bare `tar`. Git for
+    # Windows ships a GNU tar that often sits earlier on PATH, and it reads the
+    # colon in 'C:\temp\...' as a remote-host separator ("Cannot connect to C").
+    # bsdtar has been in System32 since Windows 10 1803 and handles gzip natively.
+    $tarExe = Join-Path $env:SystemRoot 'System32\tar.exe'
+    if (-not (Test-Path $tarExe)) { throw "bsdtar not found at $tarExe - cannot extract $Uri" }
+    & $tarExe -xzf $tarPath -C $extractDir
+    if ($LASTEXITCODE -ne 0) { throw "tar failed to extract '$Uri' (exit code $LASTEXITCODE)" }
+
+    Remove-Item $tarPath -Force -ErrorAction SilentlyContinue
+    return $extractDir
+}
+
 function Get-EffectiveContentRoot {
     <#
     Many release zips wrap everything in a single top-level folder
@@ -339,29 +366,52 @@ function Assert-DirNotInUse {
 # User environment variables (non-admin: HKCU only)
 # --------------------------------------------------------------------------
 function Add-UserPathEntry {
-    <# Idempotently ensures $PathToAdd is on the persistent User PATH, and on the live session PATH. #>
-    param([Parameter(Mandatory)][string]$PathToAdd)
+    <#
+    Idempotently ensures $PathToAdd is on the persistent User PATH, and on the
+    live session PATH.
+
+    -Prepend puts the entry FIRST rather than last, and moves it to the front if
+    it is already present further down. That matters when two installs supply the
+    same executable name: Apps\Python holds the cut-down embeddable runtime that
+    Update-AzureCLI.ps1 bootstraps and adds to PATH, so a full Python appended
+    after it would never win a bare `python` lookup.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$PathToAdd,
+        [switch]$Prepend
+    )
 
     $target = $PathToAdd.TrimEnd('\')
     $current = [Environment]::GetEnvironmentVariable('Path', 'User')
     $entries = @()
     if ($current) { $entries = $current -split ';' | Where-Object { $_ -ne '' } }
 
-    $alreadyPresent = $entries | Where-Object { $_.TrimEnd('\').Equals($target, [StringComparison]::OrdinalIgnoreCase) }
-    if ($alreadyPresent) {
+    $matchesTarget = { param($entry) $entry.TrimEnd('\').Equals($target, [StringComparison]::OrdinalIgnoreCase) }
+    $alreadyPresent = @($entries | Where-Object { & $matchesTarget $_ }).Count -gt 0
+    $isFirst = $entries.Count -gt 0 -and (& $matchesTarget $entries[0])
+
+    if ($alreadyPresent -and (-not $Prepend -or $isFirst)) {
         Write-Info "User PATH already contains $target"
     } else {
-        $entries += $target
+        # Drop any existing copy first, so -Prepend moves the entry instead of duplicating it.
+        $entries = @($entries | Where-Object { -not (& $matchesTarget $_) })
+        if ($Prepend) { $entries = @($target) + $entries } else { $entries += $target }
         [Environment]::SetEnvironmentVariable('Path', ($entries -join ';'), 'User')
-        Write-Ok "Added to User PATH: $target"
+        if ($alreadyPresent) {
+            Write-Ok "Moved to front of User PATH: $target"
+        } else {
+            Write-Ok "Added to User PATH: $target"
+        }
         Send-EnvironmentChangeBroadcast
     }
 
     # Make it usable in *this* session immediately, without needing a new window.
     $sessionEntries = @()
     if ($env:Path) { $sessionEntries = $env:Path -split ';' | Where-Object { $_ -ne '' } }
-    $inSession = $sessionEntries | Where-Object { $_.TrimEnd('\').Equals($target, [StringComparison]::OrdinalIgnoreCase) }
-    if (-not $inSession) {
+    if ($Prepend) {
+        $sessionEntries = @($target) + @($sessionEntries | Where-Object { -not (& $matchesTarget $_) })
+        $env:Path = ($sessionEntries -join ';')
+    } elseif (@($sessionEntries | Where-Object { & $matchesTarget $_ }).Count -eq 0) {
         $env:Path = "$env:Path;$target"
     }
 }

@@ -1,7 +1,8 @@
 <#
 .SYNOPSIS
-    Runs all ten Apps\* updater scripts in one go: AutoHotkey, AutoCorrectAHK,
-    AzCopy, AzureCLI, Git, GitHubCLI, NodeJS, Notepad++, PowerShell, VSCode.
+    Runs all eleven Apps\* updater scripts in one go: AutoHotkey,
+    AutoCorrectAHK, AzCopy, AzureCLI, Git, GitHubCLI, NodeJS, Notepad++,
+    PowerShell, Python, VSCode.
 
     Each app can also be updated independently by running its own
     Update-<App>.ps1 script directly - this is just a convenience wrapper
@@ -14,7 +15,7 @@
     normally leave running, so it usually needs -Force to update.
 
 .PARAMETER Only
-    Optional list of apps to run instead of all nine, e.g.
+    Optional list of apps to run instead of all eleven, e.g.
     -Only NodeJS,VSCode
 
 .PARAMETER Force
@@ -30,7 +31,7 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('AutoHotkey', 'AutoCorrectAHK', 'AzCopy', 'AzureCLI', 'Git', 'GitHubCLI', 'NodeJS', 'NotepadPlusPlus', 'PowerShell', 'VSCode')]
+    [ValidateSet('AutoHotkey', 'AutoCorrectAHK', 'AzCopy', 'AzureCLI', 'Git', 'GitHubCLI', 'NodeJS', 'NotepadPlusPlus', 'PowerShell', 'Python', 'VSCode')]
     [string[]]$Only,
     [switch]$Force
 )
@@ -50,6 +51,7 @@ $allApps = [ordered]@{
     'NodeJS'           = 'Update-NodeJS.ps1'
     'NotepadPlusPlus'  = 'Update-NotepadPlusPlus.ps1'
     'PowerShell'       = 'Update-PowerShell.ps1'
+    'Python'           = 'Update-Python.ps1'
     'VSCode'           = 'Update-VSCode.ps1'
 }
 
