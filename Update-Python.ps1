@@ -99,6 +99,7 @@ if (-not $Force -and -not (Test-UpdateNeeded -InstalledVersionText $installedVer
     Copy-AppFiles -SourceDir $contentRoot -DestDir $InstallDir
     Remove-TempStagingDir -Dir $extracted
     Write-Ok "Python updated to $latestVersion"
+    $global:AppUpdateResult = 'updated'
 }
 
 # These builds ship pip already; this is a cheap repair path if it goes missing.

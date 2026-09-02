@@ -185,6 +185,7 @@ if (-not $Force -and -not $isFirstInstall -and $installedSha -eq $latestSha) {
     } else {
         Write-Ok "AutoCorrect2 updated to commit $($latestSha.Substring(0,7)) ($latestDate) - your library, settings and logs were left untouched"
     }
+    $global:AppUpdateResult = 'updated'
 
     if ($wasRunning) {
         Start-Process -FilePath $mainExe -WorkingDirectory $coreDir

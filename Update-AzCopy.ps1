@@ -47,6 +47,7 @@ if (-not $Force -and -not (Test-UpdateNeeded -InstalledVersionText $installedVer
     Copy-AppFiles -SourceDir $contentRoot -DestDir $InstallDir
     Remove-TempStagingDir -Dir $extracted
     Write-Ok "AzCopy updated to $latestVersion"
+    $global:AppUpdateResult = 'updated'
 }
 
 Add-UserPathEntry -PathToAdd $InstallDir

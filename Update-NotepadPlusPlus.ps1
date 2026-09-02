@@ -56,6 +56,7 @@ if (-not $Force -and -not (Test-UpdateNeeded -InstalledVersionText $installedVer
     Copy-AppFiles -SourceDir $contentRoot -DestDir $InstallDir -ExcludeFiles $preserveFiles -ExcludeDirs $preserveDirs
     Remove-TempStagingDir -Dir $extracted
     Write-Ok "Notepad++ updated to $latestVersion (your settings/session were left untouched)"
+    $global:AppUpdateResult = 'updated'
 }
 
 Add-UserPathEntry -PathToAdd $InstallDir

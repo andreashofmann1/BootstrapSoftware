@@ -131,6 +131,7 @@ if (-not $Force -and -not (Test-UpdateNeeded -InstalledVersionText $installedVer
     & $pythonExe -m pip install --upgrade --no-warn-script-location --target $InstallDir azure-cli
     if ($LASTEXITCODE -ne 0) { throw "pip install azure-cli failed with exit code $LASTEXITCODE" }
     Write-Ok "azure-cli updated to $latestVersion"
+    $global:AppUpdateResult = 'updated'
 }
 
 # pip leaves the superseded version's *.dist-info behind on every --target

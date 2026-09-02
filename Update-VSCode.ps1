@@ -48,6 +48,7 @@ if (-not $Force -and -not (Test-UpdateNeeded -InstalledVersionText $installedVer
     Copy-AppFilesMirror -SourceDir $contentRoot -DestDir $InstallDir
     Remove-TempStagingDir -Dir $extracted
     Write-Ok "VS Code updated to $latestVersion"
+    $global:AppUpdateResult = 'updated'
 }
 
 Add-UserPathEntry -PathToAdd $InstallDir

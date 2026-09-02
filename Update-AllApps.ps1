@@ -81,11 +81,12 @@ foreach ($appName in $toRun) {
         continue
     }
     try {
+        $global:AppUpdateResult = 'up-to-date'
         & $scriptPath -Force:$Force
-        $results += [pscustomobject]@{ App = $appName; Result = 'OK'; Detail = '' }
+        $results += [pscustomobject]@{ App = $appName; Result = $global:AppUpdateResult; Detail = '' }
     } catch {
         Write-Fail "$appName failed: $($_.Exception.Message)"
-        $results += [pscustomobject]@{ App = $appName; Result = 'FAILED'; Detail = $_.Exception.Message }
+        $results += [pscustomobject]@{ App = $appName; Result = 'error'; Detail = $_.Exception.Message }
     }
 }
 
@@ -95,7 +96,7 @@ Write-Host " Summary" -ForegroundColor Magenta
 Write-Host "==============================================" -ForegroundColor Magenta
 $results | Format-Table -AutoSize | Out-String | Write-Host
 
-$failures = $results | Where-Object { $_.Result -eq 'FAILED' -or $_.Result -eq 'Not found' }
+$failures = $results | Where-Object { $_.Result -eq 'error' -or $_.Result -eq 'Not found' }
 if ($failures) {
     Write-Host "$($failures.Count) app(s) had problems - see above." -ForegroundColor Red
 }
@@ -157,9 +158,10 @@ if (Test-Path $localScript) {
     }
 }
 
-if ($failures) {
-    exit 1
-} else {
+if (-not $failures) {
     Write-Host "All done." -ForegroundColor Green
-    exit 0
 }
+
+Read-Host 'Press Enter to close this window'
+
+if ($failures) { exit 1 }

@@ -80,6 +80,7 @@ Remove-Item -LiteralPath '$stagingRoot' -Recurse -Force -ErrorAction SilentlyCon
         $encoded = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($helperScript))
         Start-Process -FilePath $sys32Pwsh -WindowStyle Hidden -ArgumentList @('-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded)
         Write-Ok "Update to $latestVersion staged. Close this pwsh window/tab (and any other pwsh sessions) to let it finish - no other action needed."
+        $global:AppUpdateResult = 'updated'
     }
 } else {
     if (-not (Assert-DirNotInUse -Dir $InstallDir -Force:$Force)) {
@@ -89,6 +90,7 @@ Remove-Item -LiteralPath '$stagingRoot' -Recurse -Force -ErrorAction SilentlyCon
     Copy-AppFiles -SourceDir $contentRoot -DestDir $InstallDir
     Remove-TempStagingDir -Dir $extracted
     Write-Ok "PowerShell updated to $latestVersion"
+    $global:AppUpdateResult = 'updated'
 }
 
 Add-UserPathEntry -PathToAdd $InstallDir

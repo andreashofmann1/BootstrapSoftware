@@ -71,6 +71,7 @@ if (-not $Force -and -not (Test-UpdateNeeded -InstalledVersionText $installedVer
     Copy-AppFiles -SourceDir $contentRoot -DestDir $InstallDir
     Remove-TempStagingDir -Dir $extracted
     Write-Ok "AutoHotkey updated to $latestVersion"
+    $global:AppUpdateResult = 'updated'
 }
 
 # Keep AutoHotkey.exe in sync with the real interpreter (also covers the case
