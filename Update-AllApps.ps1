@@ -38,6 +38,16 @@ param(
 
 . "$PSScriptRoot\Common.ps1"
 
+# Marker that tells Tunnel-Watchdog.ps1 not to start a tunnel out of Apps\VSCode
+# while we may be updating it. Holds our PID so a crashed run doesn't block it.
+$runningMarker = Join-Path $env:LOCALAPPDATA 'BootstrapSoftware\Update-AllApps.running'
+New-Item -ItemType Directory -Force -Path (Split-Path $runningMarker) | Out-Null
+Set-Content -Path $runningMarker -Value $PID
+
+# Right after logon the network often isn't fully up yet (DNS / first requests fail).
+Write-Step "Waiting 1 minute for the network to come up"
+Start-Sleep -Seconds 60
+
 $allApps = [ordered]@{
     # AutoHotkey first: AutoCorrect2 ships its own renamed AutoHotkey.exe copies
     # so it doesn't depend on the AHK install, but this is the order that reads
@@ -145,6 +155,17 @@ if (Test-Path $customScript) {
 }
 
 # Run machine-specific hook if present (not tracked by git).
+#
+# To host a VS Code tunnel on a machine (opt-in; never on the client you connect from):
+#   1. Run once by hand to sign in and name the tunnel, then Ctrl+C:
+#        code tunnel --accept-server-license-terms
+#   2. Add this line to that machine's Update-Local.ps1 (it registers the
+#      VSCode-Tunnel-Watchdog and VSCode-Tunnel-Restart scheduled tasks):
+#        & "$PSScriptRoot\Tunnel-Watchdog.ps1" -Register
+#      and remove any line there that runs `code tunnel` directly.
+#   3. In desktop VS Code: Accounts menu > Turn off Remote Tunnel Access, so only
+#      the watchdog's tunnel hosts the machine's name.
+# To undo: Unregister-ScheduledTask VSCode-Tunnel-Watchdog, VSCode-Tunnel-Restart -Confirm:$false
 $localScript = Join-Path $PSScriptRoot 'Update-Local.ps1'
 if (Test-Path $localScript) {
     Write-Host ""
@@ -160,6 +181,13 @@ if (Test-Path $localScript) {
 
 if (-not $failures) {
     Write-Host "All done." -ForegroundColor Green
+}
+
+# Updates are finished: release the watchdog and let it start the tunnel right away
+# rather than on its next scheduled check.
+Remove-Item -Path $runningMarker -ErrorAction SilentlyContinue
+if (Get-ScheduledTask -TaskName 'VSCode-Tunnel-Watchdog' -ErrorAction SilentlyContinue) {
+    Start-ScheduledTask -TaskName 'VSCode-Tunnel-Watchdog'
 }
 
 Read-Host 'Press Enter to close this window'
