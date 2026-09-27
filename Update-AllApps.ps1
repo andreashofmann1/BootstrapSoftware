@@ -45,8 +45,23 @@ New-Item -ItemType Directory -Force -Path (Split-Path $runningMarker) | Out-Null
 Set-Content -Path $runningMarker -Value $PID
 
 # Right after logon the network often isn't fully up yet (DNS / first requests fail).
-Write-Step "Waiting 1 minute for the network to come up"
-Start-Sleep -Seconds 60
+# Only matters for the unattended logon run, so any key skips it when running by hand.
+Write-Step "Waiting 1 minute for the network to come up (press any key to skip)"
+$waitUntil = (Get-Date).AddSeconds(60)
+try {
+    while ((Get-Date) -lt $waitUntil) {
+        if ([Console]::KeyAvailable) {
+            [Console]::ReadKey($true) | Out-Null
+            Write-Info "Skipped."
+            break
+        }
+        Start-Sleep -Milliseconds 200
+    }
+} catch {
+    # No interactive console (input redirected): just wait out the rest.
+    $remaining = $waitUntil - (Get-Date)
+    if ($remaining -gt [TimeSpan]::Zero) { Start-Sleep -Milliseconds $remaining.TotalMilliseconds }
+}
 
 $allApps = [ordered]@{
     # AutoHotkey first: AutoCorrect2 ships its own renamed AutoHotkey.exe copies
