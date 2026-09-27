@@ -86,7 +86,10 @@ if ($Unregister) {
 
 if ($Register) {
     $pwshExe = (Get-Process -Id $PID).Path
-    $taskArgs = "-NoProfile -WindowStyle Hidden -File `"$PSCommandPath`""
+    # Launch pwsh through a headless console host: with pwsh itself as the action, Windows opens
+    # a console window before -WindowStyle Hidden gets to hide it, so every run flashed a terminal.
+    $hostExe  = Join-Path $env:SystemRoot 'System32\conhost.exe'
+    $taskArgs = "--headless `"$pwshExe`" -NoProfile -File `"$PSCommandPath`""
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable `
         -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 10)
     $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive
@@ -100,18 +103,18 @@ if ($Register) {
     $tunnelSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable `
         -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Seconds 0)
     Register-ScheduledTask -TaskName $tunnelTask -Force `
-        -Action (New-ScheduledTaskAction -Execute $pwshExe -Argument "$taskArgs -RunTunnel") `
+        -Action (New-ScheduledTaskAction -Execute $hostExe -Argument "$taskArgs -RunTunnel") `
         -Trigger $atLogon -Settings $tunnelSettings -Principal $principal `
         -Description 'Host the VS Code tunnel' | Out-Null
 
     $every2   = New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Minutes 2)
     Register-ScheduledTask -TaskName 'VSCode-Tunnel-Watchdog' -Force `
-        -Action (New-ScheduledTaskAction -Execute $pwshExe -Argument $taskArgs) `
+        -Action (New-ScheduledTaskAction -Execute $hostExe -Argument $taskArgs) `
         -Trigger $atLogon, $every2 -Settings $settings -Principal $principal `
         -Description 'Restart the VS Code tunnel if it is not connected to the relay' | Out-Null
 
     Register-ScheduledTask -TaskName 'VSCode-Tunnel-Restart' -Force `
-        -Action (New-ScheduledTaskAction -Execute $pwshExe -Argument "$taskArgs -Restart") `
+        -Action (New-ScheduledTaskAction -Execute $hostExe -Argument "$taskArgs -Restart") `
         -Trigger (New-ScheduledTaskTrigger -Daily -At '4:00 AM') -Settings $settings -Principal $principal `
         -Description 'Daily unconditional restart of the VS Code tunnel' | Out-Null
 
@@ -186,7 +189,7 @@ if (-not $Restart) {
 if ($tunnelProcs.Count -gt 0) {
     # Ask politely first (bounded - it can hang talking to a zombie), then force.
     try {
-        $kill = Start-Process -FilePath $tunnelExe -ArgumentList 'tunnel', 'kill' -WindowStyle Hidden -PassThru
+        $kill = Start-Process -FilePath $tunnelExe -ArgumentList 'tunnel', 'kill' -NoNewWindow -PassThru
         if (-not $kill.WaitForExit(15000)) { $kill | Stop-Process -Force -ErrorAction SilentlyContinue }
     } catch { }
 }
