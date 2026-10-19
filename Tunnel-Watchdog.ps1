@@ -140,7 +140,8 @@ Limit-LogFile $outputLog
 
 # Don't start a tunnel out of Apps\VSCode while the updater may be mirroring files into it.
 # Update-AllApps.ps1 writes this marker (holding its PID) when it starts and removes it
-# once updates are done, before its "Press Enter to close" prompt. The marker only counts
+# once updates are done, before its "Press Enter to close" prompt; Update-VSCode.ps1 run
+# on its own holds it just while it copies files. The marker only counts
 # while that same process is alive, so a crashed run or one from before a reboot is
 # ignored, and never beyond $updaterMaxWait in case the updater itself hangs.
 $runningMarker  = Join-Path $env:LOCALAPPDATA 'BootstrapSoftware\Update-AllApps.running'

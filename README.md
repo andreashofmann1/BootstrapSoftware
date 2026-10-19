@@ -135,7 +135,9 @@ failed or a script was missing.
 - **Running-process safety.** Before overwriting an install directory, each
   script checks whether any process is currently running from it and skips
   the update (or force-closes it with `-Force`) rather than risk corrupting
-  a locked binary.
+  a locked binary. The one exception is a VS Code tunnel (`code-tunnel.exe`):
+  `Update-VSCode.ps1` always stops it just for the copy and then has the
+  `VSCode-Tunnel-Watchdog` task start it again.
 - **Exit codes are honest.** `robocopy` signals *success* with low non-zero
   exit codes (1 = files copied, 2 = extra files in destination), which would
   otherwise linger in `$LASTEXITCODE` and become the script's own exit code —

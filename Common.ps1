@@ -342,12 +342,14 @@ function Assert-DirNotInUse {
     <#
     Warns (and optionally stops) processes running out of $Dir before we overwrite files there.
     Returns $true if it is safe to proceed, $false if the caller should skip the update.
+    -Ignore lists process names the caller stops and restarts itself; they never block.
     #>
     param(
         [Parameter(Mandatory)][string]$Dir,
-        [switch]$Force
+        [switch]$Force,
+        [string[]]$Ignore = @()
     )
-    $procs = Get-ProcessesUsingPath -Dir $Dir
+    $procs = @(Get-ProcessesUsingPath -Dir $Dir | Where-Object { $Ignore -notcontains $_.ProcessName })
     if ($procs.Count -eq 0) { return $true }
 
     $names = ($procs | Select-Object -ExpandProperty ProcessName -Unique) -join ', '
