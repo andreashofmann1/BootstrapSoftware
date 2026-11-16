@@ -70,11 +70,16 @@ failed or a script was missing.
   is the one exception: since it keeps no user data inside its install
   folder, it's fully mirrored (`Copy-AppFilesMirror`) to also clean up
   leftover version-hash folders left by VS Code's own updater.
-- **Safe self-update.** `Update-PowerShell.ps1` detects if it's currently
-  running from the `pwsh.exe` it's about to replace. If so, it stages the
-  new build and hands off to a detached helper (via the always-available
-  Windows PowerShell 5.1) that finishes the swap automatically once you
-  close the session — no extra steps needed.
+- **Safe self-update.** `Update-PowerShell.ps1` never copies over a live
+  install. Files a running `pwsh` has loaded can't be overwritten, so that
+  left PowerShell half old, half new (and broken). Instead it unpacks the
+  new build into `Apps\PowerShell.new` and swaps it in with two folder
+  renames once no `pwsh` session runs from `Apps\PowerShell`. The VS Code
+  tunnel's `pwsh` doesn't count: it's stopped for the swap and restarted.
+  If other sessions are open, including the one running the update, a
+  hidden helper (via the always-available Windows PowerShell 5.1) waits for
+  them to close and then finishes the swap — no extra steps needed. It logs
+  to `%LOCALAPPDATA%\BootstrapSoftware\Update-PowerShell.log`.
 - **Azure CLI has no official Windows zip**, so it's handled differently:
   a portable embeddable Python is bootstrapped into `Apps\Python` (only
   once, if missing), then `azure-cli` is installed via

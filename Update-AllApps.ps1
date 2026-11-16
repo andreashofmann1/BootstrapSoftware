@@ -91,7 +91,7 @@ if (Test-CurrentProcessInsideDir -Dir (Join-Path (Get-DefaultAppsRoot) 'PowerShe
     Write-Host ""
     Write-Host "Note: you're running this from the portable pwsh being managed here." -ForegroundColor DarkYellow
     Write-Host "The PowerShell update step (if needed) will stage itself and finish" -ForegroundColor DarkYellow
-    Write-Host "automatically once you close this window - see its own output below." -ForegroundColor DarkYellow
+    Write-Host "automatically once this and every other pwsh window has closed - see its own output below." -ForegroundColor DarkYellow
 }
 
 $results = @()

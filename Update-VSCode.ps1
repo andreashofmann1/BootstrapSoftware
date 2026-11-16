@@ -52,14 +52,8 @@ if (-not $Force -and -not (Test-UpdateNeeded -InstalledVersionText $installedVer
     $extracted = Expand-ZipToDir -Uri $updateInfo.url
     $contentRoot = Get-EffectiveContentRoot -ExtractedDir $extracted   # this zip is already flat
 
-    # Keep Tunnel-Watchdog.ps1 from starting a tunnel mid-copy. When Update-AllApps.ps1 runs us
-    # it already holds this marker with our PID (and releases it when done); otherwise take it here.
-    $runningMarker = Join-Path $env:LOCALAPPDATA 'BootstrapSoftware\Update-AllApps.running'
-    $ownsMarker = -not ((Test-Path $runningMarker) -and (Get-Content $runningMarker -TotalCount 1) -eq "$PID")
-    if ($ownsMarker) {
-        New-Item -ItemType Directory -Force -Path (Split-Path $runningMarker) | Out-Null
-        Set-Content -Path $runningMarker -Value $PID
-    }
+    # Keep Tunnel-Watchdog.ps1 from starting a tunnel mid-copy.
+    $heldWatchdog = Suspend-TunnelWatchdog
     $tunnelProcs = @(Get-ProcessesUsingPath -Dir $InstallDir | Where-Object { $_.ProcessName -eq 'code-tunnel' })
     try {
         if ($tunnelProcs.Count -gt 0) {
@@ -69,19 +63,7 @@ if (-not $Force -and -not (Test-UpdateNeeded -InstalledVersionText $installedVer
         }
         Copy-AppFilesMirror -SourceDir $contentRoot -DestDir $InstallDir
     } finally {
-        if ($ownsMarker) { Remove-Item -Path $runningMarker -ErrorAction SilentlyContinue }
-        if ($tunnelProcs.Count -gt 0) {
-            # Restart through the watchdog rather than the VSCode-Tunnel task directly: that task can
-            # still count as running after code-tunnel.exe is killed, and the watchdog handles that.
-            if (-not (Get-ScheduledTask -TaskName 'VSCode-Tunnel-Watchdog' -ErrorAction SilentlyContinue)) {
-                Write-Info "No VSCode-Tunnel-Watchdog task here to restart it; start it again with: code tunnel"
-            } elseif ($ownsMarker) {
-                Start-ScheduledTask -TaskName 'VSCode-Tunnel-Watchdog'
-                Write-Info "Restarting code-tunnel via the VSCode-Tunnel-Watchdog task."
-            } else {
-                Write-Info "code-tunnel restarts once Update-AllApps finishes."
-            }
-        }
+        Resume-TunnelWatchdog -Taken $heldWatchdog -RestartTunnel:($tunnelProcs.Count -gt 0)
     }
     Remove-TempStagingDir -Dir $extracted
     Write-Ok "VS Code updated to $latestVersion"

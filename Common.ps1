@@ -174,7 +174,9 @@ function Expand-ZipToDir {
     Write-Info "Downloading $Uri"
     Invoke-FileDownload -Uri $Uri -OutFile $zipPath
     $extractDir = Join-Path $staging 'extracted'
-    Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force
+    # Expand-Archive is a script-module function, so it doesn't see the $ErrorActionPreference
+    # set above: without -ErrorAction Stop a failed extraction just prints and returns.
+    Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force -ErrorAction Stop
     Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
     return $extractDir
 }
@@ -362,6 +364,43 @@ function Assert-DirNotInUse {
 
     Write-Skip "$names is currently running from this folder. Close it and re-run, or pass -Force to stop it automatically."
     return $false
+}
+
+# --------------------------------------------------------------------------
+# VS Code tunnel (see Tunnel-Watchdog.ps1)
+#   Tunnel-Watchdog.ps1 skips its checks while this marker names a live
+#   process. Update-AllApps.ps1 holds it for its whole run; updaters that
+#   stop the tunnel hold it themselves when run on their own.
+# --------------------------------------------------------------------------
+function Suspend-TunnelWatchdog {
+    <# Takes the marker unless this process already holds it. Returns $true if it was taken here. #>
+    $marker = Join-Path $env:LOCALAPPDATA 'BootstrapSoftware\Update-AllApps.running'
+    if ((Test-Path $marker) -and (Get-Content $marker -TotalCount 1) -eq "$PID") { return $false }
+    New-Item -ItemType Directory -Force -Path (Split-Path $marker) | Out-Null
+    Set-Content -Path $marker -Value $PID
+    return $true
+}
+
+function Resume-TunnelWatchdog {
+    <#
+    Releases the marker if Suspend-TunnelWatchdog took it here ($Taken), and with -RestartTunnel
+    gets a tunnel that was stopped for an update going again.
+    #>
+    param([bool]$Taken, [switch]$RestartTunnel)
+    if ($Taken) {
+        Remove-Item -Path (Join-Path $env:LOCALAPPDATA 'BootstrapSoftware\Update-AllApps.running') -ErrorAction SilentlyContinue
+    }
+    if (-not $RestartTunnel) { return }
+    # Restart through the watchdog rather than the VSCode-Tunnel task directly: that task can
+    # still count as running after code-tunnel.exe is killed, and the watchdog handles that.
+    if (-not (Get-ScheduledTask -TaskName 'VSCode-Tunnel-Watchdog' -ErrorAction SilentlyContinue)) {
+        Write-Info "No VSCode-Tunnel-Watchdog task here to restart the tunnel; start it again with: code tunnel"
+    } elseif ($Taken) {
+        Start-ScheduledTask -TaskName 'VSCode-Tunnel-Watchdog'
+        Write-Info "Restarting the VS Code tunnel via the VSCode-Tunnel-Watchdog task."
+    } else {
+        Write-Info "The VS Code tunnel restarts once Update-AllApps finishes."
+    }
 }
 
 # --------------------------------------------------------------------------
