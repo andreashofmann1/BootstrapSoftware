@@ -14,6 +14,7 @@ no system-wide installers, no registry changes outside `HKCU`.
 | [`Update-AutoCorrectAHK.ps1`](Update-AutoCorrectAHK.ps1) | AutoCorrect2 (AHK v2 autocorrect suite) | Latest commit on `main` (`kunkel321/AutoCorrect2`) — no tagged releases |
 | [`Update-AzCopy.ps1`](Update-AzCopy.ps1) | AzCopy | Latest GitHub release (`Azure/azure-storage-azcopy`) |
 | [`Update-AzureCLI.ps1`](Update-AzureCLI.ps1) | Azure CLI | Latest PyPI `azure-cli`, installed into a bootstrapped portable Python |
+| [`Update-AzureDevCLI.ps1`](Update-AzureDevCLI.ps1) | Azure Developer CLI (`azd`, winget `Microsoft.Azd`) | Latest stable `azure-dev-cli_*` GitHub release (`Azure/azure-dev`), official zip |
 | [`Update-GitHubCLI.ps1`](Update-GitHubCLI.ps1) | GitHub CLI (`gh`) | Latest GitHub release (`cli/cli`) |
 | [`Update-NodeJS.ps1`](Update-NodeJS.ps1) | Node.js | `nodejs.org` dist index (Current or LTS channel) |
 | [`Update-NotepadPlusPlus.ps1`](Update-NotepadPlusPlus.ps1) | Notepad++ | Latest GitHub release (`notepad-plus-plus/notepad-plus-plus`), portable x64 build |
@@ -124,6 +125,13 @@ failed or a script was missing.
   launcher itself. `Update-AutoHotkey.ps1` keeps a copy matching your OS
   bitness as `AutoHotkey.exe` so `AutoHotkey myscript.ahk` works from PATH.
   It makes no registry changes, so `.ahk` files stay unassociated.
+- **azd's zip names its binary `azd-windows-amd64.exe`**, so
+  `Update-AzureDevCLI.ps1` renames it to `azd.exe` (as Microsoft's own
+  installer does). It also picks the newest stable `azure-dev-cli_*` release
+  from the release list rather than trusting `releases/latest`, because
+  `Azure/azure-dev` publishes its `azd-ext-*` extensions as releases of the
+  same repo. azd keeps its config, extensions and the Bicep CLI it fetches in
+  `%USERPROFILE%\.azd`, so the install folder holds no user data.
 - **AutoCorrect2 is versioned by commit**, not release tag: the installed
   commit is recorded in `.autocorrect2-source.json` and compared on the next
   run. It's also the one app whose *user data lives inside its install

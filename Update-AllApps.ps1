@@ -1,8 +1,8 @@
 <#
 .SYNOPSIS
-    Runs all eleven Apps\* updater scripts in one go: AutoHotkey,
-    AutoCorrectAHK, AzCopy, AzureCLI, Git, GitHubCLI, NodeJS, Notepad++,
-    PowerShell, Python, VSCode.
+    Runs all twelve Apps\* updater scripts in one go: AutoHotkey,
+    AutoCorrectAHK, AzCopy, AzureCLI, AzureDevCLI, Git, GitHubCLI, NodeJS,
+    Notepad++, PowerShell, Python, VSCode.
 
     Each app can also be updated independently by running its own
     Update-<App>.ps1 script directly - this is just a convenience wrapper
@@ -15,7 +15,7 @@
     normally leave running, so it usually needs -Force to update.
 
 .PARAMETER Only
-    Optional list of apps to run instead of all eleven, e.g.
+    Optional list of apps to run instead of all twelve, e.g.
     -Only NodeJS,VSCode
 
 .PARAMETER Force
@@ -31,7 +31,7 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('AutoHotkey', 'AutoCorrectAHK', 'AzCopy', 'AzureCLI', 'Git', 'GitHubCLI', 'NodeJS', 'NotepadPlusPlus', 'PowerShell', 'Python', 'VSCode')]
+    [ValidateSet('AutoHotkey', 'AutoCorrectAHK', 'AzCopy', 'AzureCLI', 'AzureDevCLI', 'Git', 'GitHubCLI', 'NodeJS', 'NotepadPlusPlus', 'PowerShell', 'Python', 'VSCode')]
     [string[]]$Only,
     [switch]$Force
 )
@@ -71,6 +71,7 @@ $allApps = [ordered]@{
     'AutoCorrectAHK'   = 'Update-AutoCorrectAHK.ps1'
     'AzCopy'           = 'Update-AzCopy.ps1'
     'AzureCLI'         = 'Update-AzureCLI.ps1'
+    'AzureDevCLI'      = 'Update-AzureDevCLI.ps1'
     'Git'              = 'Update-Git.ps1'
     'GitHubCLI'        = 'Update-GitHubCLI.ps1'
     'NodeJS'           = 'Update-NodeJS.ps1'
